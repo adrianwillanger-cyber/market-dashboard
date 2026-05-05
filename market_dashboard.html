@@ -277,7 +277,7 @@
     <div class="scrollable">
       <table class="tbl" id="new-table">
         <thead><tr>
-          <th>Address</th><th>List Price</th><th>Sq Ft</th><th>Yr Built</th><th>$/SF</th><th>DOM</th><th>Lot Ac</th>
+          <th>Address</th><th>Area</th><th>List Price</th><th>Sq Ft</th><th>Yr Built</th><th>$/SF</th><th>DOM</th><th>Lot Ac</th>
         </tr></thead>
         <tbody></tbody>
       </table>
@@ -321,14 +321,15 @@
     <table class="tbl" id="active-table">
       <thead><tr>
         <th onclick="sortTbl('active-table',0)">Address</th>
-        <th onclick="sortTbl('active-table',1)">List Price</th>
-        <th onclick="sortTbl('active-table',2)">Orig Price</th>
-        <th onclick="sortTbl('active-table',3)">Chg%</th>
-        <th onclick="sortTbl('active-table',4)">Sq Ft</th>
-        <th onclick="sortTbl('active-table',5)">$/SF</th>
-        <th onclick="sortTbl('active-table',6)">Yr</th>
-        <th onclick="sortTbl('active-table',7)">DOM</th>
-        <th onclick="sortTbl('active-table',8)">Lot</th>
+        <th onclick="sortTbl('active-table',1)">Area</th>
+        <th onclick="sortTbl('active-table',2)">List Price</th>
+        <th onclick="sortTbl('active-table',3)">Orig Price</th>
+        <th onclick="sortTbl('active-table',4)">Chg%</th>
+        <th onclick="sortTbl('active-table',5)">Sq Ft</th>
+        <th onclick="sortTbl('active-table',6)">$/SF</th>
+        <th onclick="sortTbl('active-table',7)">Yr</th>
+        <th onclick="sortTbl('active-table',8)">DOM</th>
+        <th onclick="sortTbl('active-table',9)">Lot</th>
         <th>Status</th>
       </tr></thead>
       <tbody></tbody>
@@ -364,13 +365,14 @@
     <table class="tbl" id="pending-table">
       <thead><tr>
         <th onclick="sortTbl('pending-table',0)">Address</th>
-        <th onclick="sortTbl('pending-table',1)">List Price</th>
-        <th onclick="sortTbl('pending-table',2)">Sq Ft</th>
-        <th onclick="sortTbl('pending-table',3)">$/SF</th>
-        <th onclick="sortTbl('pending-table',4)">Yr Built</th>
-        <th onclick="sortTbl('pending-table',5)">DOM</th>
-        <th onclick="sortTbl('pending-table',6)">List Date</th>
-        <th onclick="sortTbl('pending-table',7)">Pend Date</th>
+        <th onclick="sortTbl('pending-table',1)">Area</th>
+        <th onclick="sortTbl('pending-table',2)">List Price</th>
+        <th onclick="sortTbl('pending-table',3)">Sq Ft</th>
+        <th onclick="sortTbl('pending-table',4)">$/SF</th>
+        <th onclick="sortTbl('pending-table',5)">Yr Built</th>
+        <th onclick="sortTbl('pending-table',6)">DOM</th>
+        <th onclick="sortTbl('pending-table',7)">List Date</th>
+        <th onclick="sortTbl('pending-table',8)">Pend Date</th>
         <th>Status</th>
         <th>Note</th>
       </tr></thead>
@@ -404,14 +406,15 @@
       <table class="tbl" id="sold-table">
         <thead><tr>
           <th onclick="sortTbl('sold-table',0)">Address</th>
-          <th onclick="sortTbl('sold-table',1)">List $</th>
-          <th onclick="sortTbl('sold-table',2)">Sold $</th>
-          <th onclick="sortTbl('sold-table',3)">S/L%</th>
-          <th onclick="sortTbl('sold-table',4)">Sq Ft</th>
-          <th onclick="sortTbl('sold-table',5)">$/SF Sold</th>
-          <th onclick="sortTbl('sold-table',6)">Yr Built</th>
-          <th onclick="sortTbl('sold-table',7)">DOM</th>
-          <th onclick="sortTbl('sold-table',8)">Sold Date</th>
+          <th onclick="sortTbl('sold-table',1)">Area</th>
+          <th onclick="sortTbl('sold-table',2)">List $</th>
+          <th onclick="sortTbl('sold-table',3)">Sold $</th>
+          <th onclick="sortTbl('sold-table',4)">S/L%</th>
+          <th onclick="sortTbl('sold-table',5)">Sq Ft</th>
+          <th onclick="sortTbl('sold-table',6)">$/SF Sold</th>
+          <th onclick="sortTbl('sold-table',7)">Yr Built</th>
+          <th onclick="sortTbl('sold-table',8)">DOM</th>
+          <th onclick="sortTbl('sold-table',9)">Sold Date</th>
         </tr></thead>
         <tbody></tbody>
       </table>
@@ -431,11 +434,12 @@
         <table class="tbl" id="reduction-table">
           <thead><tr>
             <th onclick="sortTbl('reduction-table',0)">Address</th>
-            <th onclick="sortTbl('reduction-table',1)">Current $</th>
-            <th onclick="sortTbl('reduction-table',2)">Original $</th>
-            <th onclick="sortTbl('reduction-table',3)">Cut %</th>
-            <th onclick="sortTbl('reduction-table',4)">$ Saved</th>
-            <th onclick="sortTbl('reduction-table',5)">DOM</th>
+            <th onclick="sortTbl('reduction-table',1)">Area</th>
+            <th onclick="sortTbl('reduction-table',2)">Current $</th>
+            <th onclick="sortTbl('reduction-table',3)">Original $</th>
+            <th onclick="sortTbl('reduction-table',4)">Cut %</th>
+            <th onclick="sortTbl('reduction-table',5)">$ Saved</th>
+            <th onclick="sortTbl('reduction-table',6)">DOM</th>
           </tr></thead>
           <tbody></tbody>
         </table>
@@ -459,14 +463,15 @@
       <table class="tbl" id="stale-table">
         <thead><tr>
           <th onclick="sortTbl('stale-table',0)">Address</th>
-          <th onclick="sortTbl('stale-table',1)">List Price</th>
-          <th onclick="sortTbl('stale-table',2)">Orig Price</th>
-          <th onclick="sortTbl('stale-table',3)">Cut%</th>
-          <th onclick="sortTbl('stale-table',4)">DOM</th>
-          <th onclick="sortTbl('stale-table',5)">CDOM</th>
-          <th onclick="sortTbl('stale-table',6)">Yr Built</th>
-          <th onclick="sortTbl('stale-table',7)">Sq Ft</th>
-          <th onclick="sortTbl('stale-table',8)">$/SF</th>
+          <th onclick="sortTbl('stale-table',1)">Area</th>
+          <th onclick="sortTbl('stale-table',2)">List Price</th>
+          <th onclick="sortTbl('stale-table',3)">Orig Price</th>
+          <th onclick="sortTbl('stale-table',4)">Cut%</th>
+          <th onclick="sortTbl('stale-table',5)">DOM</th>
+          <th onclick="sortTbl('stale-table',6)">CDOM</th>
+          <th onclick="sortTbl('stale-table',7)">Yr Built</th>
+          <th onclick="sortTbl('stale-table',8)">Sq Ft</th>
+          <th onclick="sortTbl('stale-table',9)">$/SF</th>
           <th>List Date</th>
         </tr></thead>
         <tbody></tbody>
@@ -619,6 +624,7 @@ function buildNewListings() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="addr">${r.address}</td>
+      <td>${r.area||'—'}</td>
       <td class="price" data-val="${r.listPrice||0}">${fmt(r.listPrice)}</td>
       <td class="num" data-val="${r.sqft||0}">${r.sqft ? r.sqft.toLocaleString() : '—'}</td>
       <td class="num" data-val="${r.yr||0}">${r.yr||'—'}</td>
@@ -644,6 +650,7 @@ function renderActiveTable(data) {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="addr">${r.address}</td>
+      <td>${r.area||'—'}</td>
       <td class="price num" data-val="${r.listPrice||0}">${fmt(r.listPrice)}</td>
       <td class="num" data-val="${r.origPrice||0}">${r.origPrice && r.origPrice!==r.listPrice ? fmt(r.origPrice) : '—'}</td>
       <td data-val="${r.pctChange||0}">${cutTag}</td>
@@ -696,6 +703,7 @@ function renderPendingTable(data) {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="addr">${r.address}</td>
+      <td>${r.area||'—'}</td>
       <td class="price num" data-val="${r.listPrice||0}">${fmt(r.listPrice)}</td>
       <td class="num" data-val="${r.sqft||0}">${r.sqft?r.sqft.toLocaleString():'—'}</td>
       <td class="num" data-val="${r.ppsf||0}">${r.ppsf?'$'+r.ppsf:'—'}</td>
@@ -737,6 +745,7 @@ function buildSold() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="addr">${r.address}</td>
+      <td>${r.area||'—'}</td>
       <td class="price num" data-val="${r.listPrice||0}">${fmt(r.listPrice)}</td>
       <td class="price num" data-val="${r.sellPrice||0}" style="color:${r.ratio>100?'var(--green)':r.ratio<97?'var(--red)':'inherit'}">${fmt(r.sellPrice)}</td>
       <td data-val="${r.ratio||0}">${ratioTag}</td>
@@ -761,6 +770,7 @@ function buildReductions() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="addr">${r.address}</td>
+      <td>${r.area||'—'}</td>
       <td class="price num" data-val="${r.listPrice||0}">${fmt(r.listPrice)}</td>
       <td class="num" data-val="${r.origPrice||0}" style="text-decoration:line-through;color:var(--gray-400)">${fmt(r.origPrice)}</td>
       <td data-val="${r.pctChange||0}"><span style="background:${color};color:white;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:800;">${r.pctChange}%</span></td>
@@ -803,6 +813,7 @@ function buildStale() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="addr">${r.address}</td>
+      <td>${r.area||'—'}</td>
       <td class="price num" data-val="${r.listPrice||0}">${fmt(r.listPrice)}</td>
       <td class="num" data-val="${r.origPrice||0}">${r.origPrice&&r.origPrice!==r.listPrice?fmt(r.origPrice):'—'}</td>
       <td data-val="${r.pctChange||0}">${pctTag}</td>
