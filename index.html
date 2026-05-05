@@ -150,6 +150,19 @@
   .dom-bar { display: inline-block; height: 8px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
 
   footer { text-align: center; padding: 18px; font-size: 11px; color: var(--gray-400); border-top: 1px solid var(--border); background: white; margin-top: 20px; }
+
+  /* UPLOAD ZONE */
+  .upload-section { background: var(--navy); padding: 24px 28px; margin-top: 4px; }
+  .upload-zone { border: 2px dashed rgba(255,255,255,.25); border-radius: 12px; padding: 28px 20px; text-align: center; cursor: pointer; transition: all .2s; background: rgba(255,255,255,.04); }
+  .upload-zone:hover, .upload-zone.drag-over { border-color: #60a5fa; background: rgba(96,165,250,.08); }
+  .upload-icon { font-size: 2rem; display: block; margin-bottom: 8px; }
+  .upload-title { color: #fff; font-size: .95rem; font-weight: 700; margin-bottom: 4px; }
+  .upload-sub { color: #94a3b8; font-size: .8rem; }
+  .upload-status { margin-top: 10px; font-size: .8rem; font-weight: 600; }
+  .upload-status.ok { color: #4ade80; }
+  .upload-status.err { color: #f87171; }
+  .upload-btn { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); color: #fff; font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 6px; cursor: pointer; text-decoration: none; transition: background .15s; white-space: nowrap; }
+  .upload-btn:hover { background: rgba(255,255,255,.2); }
 </style>
 </head>
 <body>
@@ -159,8 +172,12 @@
     <h1>Market Activity <span>Dashboard</span> <span class="badge-live">LIVE</span></h1>
     <div class="meta">Generated: May 4, 2026 &nbsp;·&nbsp; 529 records &nbsp;·&nbsp; MLS Area Report</div>
   </div>
-  <div style="text-align:right;font-size:11px;color:#94a3b8;line-height:1.6;">
-    Snapshot Date: 05/04/2026<br>Appraiser Market Grid #15
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+    <div style="text-align:right;font-size:11px;color:#94a3b8;line-height:1.6;" id="hdr-meta">Snapshot Date: 05/04/2026<br>Appraiser Market Grid #15</div>
+    <label class="upload-btn" title="Load new CSV data">
+      &#128196; Load Data
+      <input type="file" accept=".csv" style="display:none" onchange="onFileInput(this)">
+    </label>
   </div>
 </div>
 
@@ -838,6 +855,245 @@ window.addEventListener('DOMContentLoaded', () => {
   buildReductions();
   buildStale();
 });
+
+// ─── CSV UPLOAD ─────────────────────────────────────────────────────────
+function handleDragOver(e) { e.preventDefault(); document.getElementById('dropZone').classList.add('drag-over'); }
+function handleDragLeave(e) { document.getElementById('dropZone').classList.remove('drag-over'); }
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+function onFileInput(inp) { if (inp.files[0]) processFile(inp.files[0]); }
+
+function setUploadStatus(msg, type) {
+  const el = document.getElementById('uploadStatus');
+  el.textContent = msg;
+  el.className = 'upload-status ' + (type || '');
+}
+
+function processFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext !== 'csv') { setUploadStatus('Please upload a CSV file.', 'err'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const listings = parseCSV(e.target.result);
+      if (!listings || listings.length === 0) { setUploadStatus('Could not parse file — no rows found.', 'err'); return; }
+      rebuildDashboard(listings, file.name);
+      setUploadStatus('✓ Loaded ' + listings.length + ' listings from ' + file.name, 'ok');
+    } catch(err) {
+      setUploadStatus('Error: ' + err.message, 'err');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function parseCSV(text) {
+  const lines = text.split(/\r?\n/);
+  if (lines.length < 2) return [];
+  // Parse header
+  const rawHdr = lines[0];
+  const headers = splitCSVRow(rawHdr).map(h => h.trim().toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''));
+
+  // Column aliases
+  const alias = {
+    'status': ['status','listing_status','group'],
+    'address': ['address','street_address','property_address'],
+    'listPrice': ['list_price','listing_price','lp','list_p'],
+    'sellPrice': ['sell_price','sold_price','close_price','sp','sold_p','sale_price'],
+    'origPrice': ['orig_price','original_price','orig_list','original_list'],
+    'yr': ['yr','year_built','yr_built','year'],
+    'sqft': ['sqft','sq_ft','square_feet','square_footage','sf','size'],
+    'lot': ['lot','lot_ac','lot_acres','lot_size'],
+    'pctChange': ['pct_change','_change','change_pct','price_change','reduction','chg_'],
+    'ratio': ['ratio','s_l','s_l_','sell_list','sp_lp'],
+    'ppsf': ['ppsf','__sf','price_per_sf','price_per_sqft','list_ppsf','_sf'],
+    'sellPpsf': ['sell_ppsf','sold_ppsf','sold__sf','sell__sf'],
+    'dom': ['dom','days_on_market','days_market'],
+    'cdom': ['cdom','cumulative_dom','cum_dom'],
+    'listDate': ['list_date','listing_date','date_listed'],
+    'pendDate': ['pend_date','pending_date','date_pending'],
+    'sellDate': ['sell_date','sold_date','close_date','date_sold'],
+    'bbcNote': ['bbc_note','note','notes','comment'],
+    'saleType': ['sale_type','type','mls_type','sra'],
+    'area': ['area','neighborhood','district','zone','sub_area','subarea'],
+    'reduced': ['reduced','price_reduced'],
+  };
+
+  function findCol(field) {
+    const candidates = alias[field] || [field];
+    for (const c of candidates) {
+      const idx = headers.findIndex(h => h === c || h.startsWith(c) || h.includes(c));
+      if (idx >= 0) return idx;
+    }
+    return -1;
+  }
+
+  const colMap = {};
+  for (const field of Object.keys(alias)) colMap[field] = findCol(field);
+
+  const listings = [];
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const cells = splitCSVRow(line);
+    const g = v => (colMap[v] >= 0 && cells[colMap[v]] != null) ? cells[colMap[v]].trim() : '';
+    const gn = v => { const s = g(v); const n = parseFloat(s.replace(/[$,%]/g,'')); return isNaN(n) ? null : n; };
+
+    const status = g('status') || 'Active';
+    const statusNorm = normalizeStatus(status);
+    const lp = gn('listPrice');
+    const sp = gn('sellPrice');
+    const op = gn('origPrice') || lp;
+    const sqft = gn('sqft');
+    const pctRaw = gn('pctChange');
+    const pctChange = pctRaw != null ? pctRaw : (op && lp && op !== lp ? Math.round((lp-op)/op*1000)/10 : 0);
+    const reduced = g('reduced').toLowerCase() === 'true' || g('reduced') === '1' || (pctChange && pctChange < 0);
+
+    const row = {
+      status: statusNorm,
+      group: normalizeGroup(statusNorm),
+      address: g('address'),
+      listPrice: lp,
+      sellPrice: sp,
+      origPrice: op,
+      yr: gn('yr'),
+      sqft: sqft,
+      lot: gn('lot'),
+      reduced: !!reduced,
+      pctChange: pctChange || 0,
+      ratio: sp && lp ? Math.round(sp/lp*1000)/10 : (gn('ratio')),
+      ppsf: sqft && lp ? Math.round(lp/sqft) : gn('ppsf'),
+      sellPpsf: sqft && sp ? Math.round(sp/sqft) : gn('sellPpsf'),
+      dom: gn('dom'),
+      cdom: gn('cdom'),
+      listDate: g('listDate'),
+      pendDate: g('pendDate'),
+      sellDate: g('sellDate'),
+      bbcNote: g('bbcNote'),
+      saleType: g('saleType') || 'MLS',
+      area: g('area'),
+    };
+    if (row.address) listings.push(row);
+  }
+  return listings;
+}
+
+function splitCSVRow(line) {
+  const cells = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { if (inQ && line[i+1] === '"') { cur += '"'; i++; } else inQ = !inQ; }
+    else if (ch === ',' && !inQ) { cells.push(cur); cur = ''; }
+    else cur += ch;
+  }
+  cells.push(cur);
+  return cells;
+}
+
+function normalizeStatus(s) {
+  const l = s.toLowerCase();
+  if (l.includes('active') || l === 'a') return 'Active';
+  if (l.includes('pending') || l === 'p') return 'Pending';
+  if (l.includes('contingent') || l.includes('ctg')) return 'Contingent';
+  if (l.includes('sold') || l.includes('closed') || l === 's') return 'Sold';
+  if (l.includes('expired') || l === 'e') return 'Expired';
+  if (l.includes('cancel')) return 'Cancelled';
+  return s;
+}
+function normalizeGroup(s) {
+  if (s === 'Active' || s === 'Contingent') return 'Active';
+  return s;
+}
+
+function rebuildDashboard(listings, filename) {
+  // Rebuild DATA
+  const active  = listings.filter(r => r.group === 'Active');
+  const pending = listings.filter(r => r.status === 'Pending' || r.status === 'Contingent');
+  const sold    = listings.filter(r => r.status === 'Sold');
+  const all     = listings;
+
+  // Recompute stats
+  const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
+  const med = arr => { if (!arr.length) return 0; const s=[...arr].sort((a,b)=>a-b); const m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; };
+
+  DATA.allListings = listings;
+  DATA.recentSolds = sold.sort((a,b) => (b.sellDate||'').localeCompare(a.sellDate||'')).slice(0, 60);
+  DATA.newListings  = active.filter(r => r.dom != null && r.dom <= 7).sort((a,b)=>(a.dom||0)-(b.dom||0));
+  DATA.staleListings = active.filter(r => r.dom != null && r.dom >= 60).sort((a,b)=>(b.dom||0)-(a.dom||0));
+
+  const activePrices = active.map(r=>r.listPrice).filter(Boolean);
+  const soldPrices   = sold.map(r=>r.sellPrice||r.listPrice).filter(Boolean);
+  const soldDoms     = sold.map(r=>r.dom).filter(v=>v!=null);
+
+  DATA.stats = {
+    totalActive: active.length,
+    totalPending: pending.length,
+    totalSold: sold.length,
+    totalContingent: listings.filter(r=>r.status==='Contingent').length,
+    totalExpired: listings.filter(r=>r.status==='Expired').length,
+    totalCancelled: listings.filter(r=>r.status==='Cancelled').length,
+    totalReduced: active.filter(r=>r.reduced).length,
+    soldOver: sold.filter(r=>r.ratio&&r.ratio>100).length,
+    avgActivePrice: Math.round(avg(activePrices)),
+    medActivePrice: Math.round(med(activePrices)),
+    avgSoldPrice: Math.round(avg(soldPrices)),
+    medSoldPrice: Math.round(med(soldPrices)),
+    avgDom: Math.round(avg(soldDoms)),
+    medDom: Math.round(med(soldDoms)),
+    avgRatio: sold.filter(r=>r.ratio).length ? Math.round(avg(sold.filter(r=>r.ratio).map(r=>r.ratio))*10)/10 : null,
+    totalListings: listings.length,
+  };
+
+  // Histogram buckets
+  const buckets = [[0,400],[400,500],[500,600],[600,700],[700,800],[800,900],[900,1000],[1000,1250],[1250,1500],[1500,2000],[2000,9999]];
+  DATA.histLabels  = buckets.map(([l,h])=>h>=2000?'$2M+':l===0?'<$400K':'$'+l+'–'+h+'K');
+  DATA.histActive  = buckets.map(([l,h])=>active.filter(r=>r.listPrice&&r.listPrice>=l*1000&&r.listPrice<h*1000).length);
+  DATA.histPending = buckets.map(([l,h])=>pending.filter(r=>r.listPrice&&r.listPrice>=l*1000&&r.listPrice<h*1000).length);
+  DATA.histSold    = buckets.map(([l,h])=>sold.filter(r=>{const p=r.sellPrice||r.listPrice;return p&&p>=l*1000&&p<h*1000;}).length);
+
+  // Update header meta
+  const dateMeta = filename.replace('.csv','');
+  const metaEl = document.getElementById('hdr-meta');
+  if (metaEl) metaEl.innerHTML = 'Loaded: ' + dateMeta + '<br>' + listings.length + ' records';
+
+  // Update tab counts
+  const tabs = document.querySelectorAll('.tab');
+  const tabLabels = ['Overview','Active','Pending','Sold','Price Reductions','Watch List'];
+  const tabCounts = [null, DATA.stats.totalActive, DATA.stats.totalPending, DATA.stats.totalSold, DATA.stats.totalReduced, null];
+  tabs.forEach((t,i) => {
+    if (tabCounts[i] != null) {
+      t.textContent = t.textContent.replace(/\s*\(\d+\)/,'') + ' (' + tabCounts[i] + ')';
+    }
+  });
+
+  // Rebuild all sections
+  buildHistogram();
+  buildDonut();
+  buildNewListings();
+  buildActive();
+  buildPending();
+  buildSold();
+  buildReductions();
+  buildStale();
+}
+
 </script>
+
+<div class="upload-section">
+  <div class="upload-zone" id="dropZone"
+    onclick="document.querySelector('#dropZone input[type=file]').click()"
+    ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+    <span class="upload-icon">&#128196;</span>
+    <div class="upload-title">Load New Data</div>
+    <div class="upload-sub">Drag &amp; drop a <strong>CSV</strong> file here, or click to browse</div>
+    <input type="file" accept=".csv" style="display:none" onchange="onFileInput(this)">
+    <div class="upload-status" id="uploadStatus"></div>
+  </div>
+</div>
 </body>
 </html>
