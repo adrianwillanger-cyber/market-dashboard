@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Market Activity Dashboard</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --navy: #1a2744; --blue: #2563eb; --blue-light: #dbeafe; --blue-mid: #3b82f6;
+    --green: #16a34a; --green-light: #dcfce7; --red: #dc2626; --red-light: #fee2e2;
+    --amber: #d97706; --amber-light: #fef3c7;
+    --gray-50: #f8fafc; --gray-100: #f1f5f9; --gray-200: #e2e8f0;
+    --gray-400: #94a3b8; --gray-600: #475569; --gray-800: #1e293b;
+    --purple: #7c3aed; --purple-light: #ede9fe;
+    --teal: #0891b2; --teal-light: #cffafe;
+    --text: #1e293b; --border: #e2e8f0;
+    --radius: 10px; --shadow: 0 1px 3px rgba(0,0,0,.1), 0 1px 2px rgba(0,0,0,.06);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -1px rgba(0,0,0,.06);
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f4f8; color: var(--text); font-size: 13px; }
+  .header { background: var(--navy); color: white; padding: 18px 28px; display:flex; align-items:center; justify-content:space-between; }
+  .header h1 { font-size: 20px; font-weight: 700; letter-spacing: -.3px; }
+  .header h1 span { color: #60a5fa; }
+  .header .meta { font-size: 12px; color: #94a3b8; }
+  .badge-live { background: #ef4444; color: white; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px; margin-left: 10px; letter-spacing:.5px; }
+  .tabs { background: white; border-bottom: 1px solid var(--border); display: flex; padding: 0 24px; gap: 4px; overflow-x: auto; }
+  .tab { padding: 12px 18px; font-size: 13px; font-weight: 600; cursor: pointer; border-bottom: 3px solid transparent; color: var(--gray-600); white-space: nowrap; transition: all .15s; }
+  .tab:hover { color: var(--blue); }
+  .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+  .content { padding: 20px 24px; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: white; border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); border-top: 3px solid transparent; }
+  .stat-card.blue  { border-top-color: var(--blue); }
+  .stat-card.green { border-top-color: var(--green); }
+  .stat-card.amber { border-top-color: var(--amber); }
+  .stat-card.red   { border-top-color: var(--red); }
+  .stat-card.purple{ border-top-color: var(--purple); }
+  .stat-card.teal  { border-top-color: var(--teal); }
+  .stat-card.gray  { border-top-color: var(--gray-400); }
+  .stat-val { font-size: 26px; font-weight: 800; line-height: 1; }
+  .stat-label { font-size: 11px; color: var(--gray-600); margin-top: 4px; font-weight: 500; text-transform: uppercase; letter-spacing:.4px; }
+  .stat-sub { font-size: 11px; color: var(--gray-400); margin-top: 3px; }
+  .metrics-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .metric-card { background: white; border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
+  .metric-title { font-size: 11px; text-transform: uppercase; letter-spacing:.5px; color: var(--gray-600); font-weight: 600; margin-bottom: 8px; }
+  .metric-big { font-size: 22px; font-weight: 800; }
+  .metric-note { font-size: 11px; color: var(--gray-400); margin-top: 3px; }
+  .metric-green { color: var(--green); }
+  .metric-red   { color: var(--red); }
+  .metric-amber { color: var(--amber); }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  @media(max-width:900px){ .two-col,.three-col { grid-template-columns:1fr; } }
+  .panel { background: white; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .panel-hd { padding: 12px 16px; border-bottom: 1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .panel-hd h3 { font-size: 13px; font-weight: 700; }
+  .panel-hd .count { background: var(--gray-100); color: var(--gray-600); font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+  .tbl { width: 100%; border-collapse: collapse; }
+  .tbl th { background: var(--gray-50); padding: 8px 12px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing:.4px; color: var(--gray-600); border-bottom: 2px solid var(--border); white-space: nowrap; cursor: pointer; user-select: none; }
+  .tbl th:hover { background: var(--gray-100); }
+  .tbl th.sorted-asc::after  { content: ' ↑'; }
+  .tbl th.sorted-desc::after { content: ' ↓'; }
+  .tbl td { padding: 7px 12px; border-bottom: 1px solid var(--border); font-size: 12px; vertical-align: middle; }
+  .tbl tr:last-child td { border-bottom: none; }
+  .tbl tr:hover td { background: var(--blue-light); }
+  .tbl .addr { font-weight: 600; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tbl .price { font-weight: 700; }
+  .tbl .num { text-align: right; }
+  .pill { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px; letter-spacing:.3px; }
+  .pill-active  { background: var(--blue-light); color: #1d4ed8; }
+  .pill-pending { background: var(--amber-light); color: #92400e; }
+  .pill-sold    { background: var(--green-light); color: #166534; }
+  .pill-red     { background: var(--red-light); color: #991b1b; }
+  .pill-gray    { background: var(--gray-100); color: var(--gray-600); }
+  .pill-purple  { background: var(--purple-light); color: #5b21b6; }
+  .pill-teal    { background: var(--teal-light); color: #155e75; }
+  .pill-new     { background: #dcfce7; color: #14532d; }
+  .pill-stale   { background: #fee2e2; color: #7f1d1d; }
+  .chart-wrap { padding: 16px; }
+  .bar-chart { display: flex; flex-direction: column; gap: 10px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; }
+  .bar-label { width: 100px; font-size: 11px; color: var(--gray-600); text-align: right; flex-shrink: 0; }
+  .ratio-bar { display: inline-block; width: 50px; height: 6px; border-radius: 3px; vertical-align: middle; margin-right: 4px; }
+  .over   { background: var(--green); }
+  .under  { background: var(--red); }
+  .at     { background: var(--amber); }
+  .filter-bar { display: flex; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; align-items: center; background: var(--gray-50); }
+  .filter-bar input, .filter-bar select { border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-size: 12px; color: var(--text); background: white; }
+  .filter-bar input { min-width: 200px; }
+  .filter-bar label { font-size: 11px; font-weight: 600; color: var(--gray-600); }
+  .filter-count { margin-left: auto; font-size: 12px; color: var(--gray-400); }
+  .donut-wrap { display: flex; align-items: center; gap: 20px; padding: 16px; }
+  .donut-legend { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .legend-pct { margin-left: auto; font-weight: 700; }
+  .note-box { background: var(--amber-light); border-left: 4px solid var(--amber); padding: 10px 14px; border-radius: 6px; font-size: 12px; margin: 12px 16px; color: #78350f; }
+  .scrollable { max-height: 420px; overflow-y: auto; }
+  .scrollable::-webkit-scrollbar { width: 4px; }
+  .scrollable::-webkit-scrollbar-track { background: var(--gray-100); }
+  .scrollable::-webkit-scrollbar-thumb { background: var(--gray-400); border-radius: 2px; }
+  .dom-bar { display: inline-block; height: 8px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
+  footer { text-align: center; padding: 18px; font-size: 11px; color: var(--gray-400); border-top: 1px solid var(--border); background: white; margin-top: 20px; }
+  .upload-section { background: var(--navy); padding: 24px 28px; margin-top: 4px; }
+  .upload-zone { border: 2px dashed rgba(255,255,255,.25); border-radius: 12px; padding: 28px 20px; text-align: center; cursor: pointer; transition: all .2s; background: rgba(255,255,255,.04); }
+  .upload-zone:hover, .upload-zone.drag-over { border-color: #60a5fa; background: rgba(96,165,250,.08); }
+  .upload-icon { font-size: 2rem; display: block; margin-bottom: 8px; }
+  .upload-title { color: #fff; font-size: .95rem; font-weight: 700; margin-bottom: 4px; }
+  .upload-sub { color: #94a3b8; font-size: .8rem; }
+  .upload-status { margin-top: 10px; font-size: .8rem; font-weight: 600; }
+  .upload-status.ok { color: #4ade80; }
+  .upload-status.err { color: #f87171; }
+  .upload-btn { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); color: #fff; font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 6px; cursor: pointer; text-decoration: none; transition: background .15s; white-space: nowrap; }
+  .upload-btn:hover { background: rgba(255,255,255,.2); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Market Activity <span>Dashboard</span> <span class="badge-live">LIVE</span></h1>
+    <div class="meta" id="hdr-sub">Upload your CSV to load data</div>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+    <div style="text-align:right;font-size:11px;color:#94a3b8;line-height:1.6;" id="hdr-meta">No data loaded</div>
+    <label class="upload-btn" title="Load new CSV data">
+      &#128196; Load Data
+      <input type="file" accept=".csv" style="display:none" onchange="onFileInput(this)">
+    </label>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showPage('overview')">📊 Overview</div>
+  <div class="tab" onclick="showPage('active')">🏠 Active</div>
+  <div class="tab" onclick="showPage('pending')">⏳ Pending</div>
+  <div class="tab" onclick="showPage('sold')">✅ Sold</div>
+  <div class="tab" onclick="showPage('reductions')">📉 Price Reductions</div>
+  <div class="tab" onclick="showPage('stale')">🕐 Watch List</div>
+</div>
+
+<div class="content">
+
+<!-- OVERVIEW -->
+<div class="page active" id="page-overview">
+  <div class="stat-grid" id="overview-stat-grid">
+    <div class="stat-card blue" style="grid-column:1/-1;text-align:center;padding:28px;">
+      <div style="font-size:15px;color:var(--gray-600);font-weight:600;">Upload your CSV using the "Load Data" button above to populate the dashboard.</div>
+    </div>
+  </div>
+  <div class="metrics-row" id="overview-metrics-row"></div>
+  <div class="two-col">
+    <div class="panel">
+      <div class="panel-hd"><h3>Price Distribution by Bucket</h3><span class="count">by status</span></div>
+      <div class="chart-wrap"><div class="bar-chart" id="price-hist"></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-hd"><h3>Inventory Status Mix</h3><span class="count" id="donut-total">—</span></div>
+      <div class="donut-wrap">
+        <svg width="140" height="140" viewBox="0 0 140 140" id="donut-svg"></svg>
+        <div class="donut-legend" id="donut-legend"></div>
+      </div>
+    </div>
+  </div>
+  <div class="panel" style="margin-bottom:16px;">
+    <div class="panel-hd"><h3>🆕 Fresh to Market — DOM ≤ 7 Days</h3><span class="count" id="new-count">—</span></div>
+    <div class="scrollable">
+      <table class="tbl" id="new-table">
+        <thead><tr><th>Address</th><th>Area</th><th>List Price</th><th>Sq Ft</th><th>Yr Built</th><th>$/SF</th><th>DOM</th><th>Lot Ac</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ACTIVE -->
+<div class="page" id="page-active">
+  <div class="filter-bar">
+    <label>Search:</label>
+    <input type="text" id="active-search" placeholder="Address or price..." oninput="filterActive()">
+    <label>Price:</label>
+    <select id="active-price" onchange="filterActive()">
+      <option value="">All Prices</option>
+      <option value="0-300000">&lt; $300K</option>
+      <option value="300000-500000">$300K–$500K</option>
+      <option value="500000-750000">$500K–$750K</option>
+      <option value="750000-1000000">$750K–$1M</option>
+      <option value="1000000-1500000">$1M–$1.5M</option>
+      <option value="1500000-99999999">$1.5M+</option>
+    </select>
+    <label>Reduced:</label>
+    <select id="active-reduced" onchange="filterActive()">
+      <option value="">All</option>
+      <option value="yes">Reduced Only</option>
+      <option value="no">Not Reduced</option>
+    </select>
+    <label>DOM:</label>
+    <select id="active-dom" onchange="filterActive()">
+      <option value="">All</option>
+      <option value="fresh">0–7 days</option>
+      <option value="mid">8–30 days</option>
+      <option value="aged">31–90 days</option>
+      <option value="stale">90+ days</option>
+    </select>
+    <span class="filter-count" id="active-filter-count"></span>
+  </div>
+  <div class="scrollable" style="max-height:580px;">
+    <table class="tbl" id="active-table">
+      <thead><tr>
+        <th onclick="sortTbl('active-table',0)">Address</th>
+        <th onclick="sortTbl('active-table',1)">Area</th>
+        <th onclick="sortTbl('active-table',2)">List Price</th>
+        <th onclick="sortTbl('active-table',3)">Orig Price</th>
+        <th onclick="sortTbl('active-table',4)">Chg%</th>
+        <th onclick="sortTbl('active-table',5)">Sq Ft</th>
+        <th onclick="sortTbl('active-table',6)">$/SF</th>
+        <th onclick="sortTbl('active-table',7)">Yr</th>
+        <th onclick="sortTbl('active-table',8)">DOM</th>
+        <th onclick="sortTbl('active-table',9)">Lot</th>
+        <th>Status</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- PENDING -->
+<div class="page" id="page-pending">
+  <div class="filter-bar">
+    <label>Search:</label>
+    <input type="text" id="pending-search" placeholder="Address or price..." oninput="filterPending()">
+    <label>Type:</label>
+    <select id="pending-type" onchange="filterPending()">
+      <option value="">All Pending</option>
+      <option value="Pending">Pending</option>
+      <option value="Pending Inspection">Pending Inspection</option>
+      <option value="Pending BU Requested">Pending BU Requested</option>
+      <option value="Pending Short Sale">Pending Short Sale</option>
+    </select>
+    <label>Price:</label>
+    <select id="pending-price" onchange="filterPending()">
+      <option value="">All Prices</option>
+      <option value="0-300000">&lt; $300K</option>
+      <option value="300000-500000">$300K–$500K</option>
+      <option value="500000-750000">$500K–$750K</option>
+      <option value="750000-1000000">$750K–$1M</option>
+      <option value="1000000-99999999">$1M+</option>
+    </select>
+    <span class="filter-count" id="pending-filter-count"></span>
+  </div>
+  <div class="scrollable" style="max-height:580px;">
+    <table class="tbl" id="pending-table">
+      <thead><tr>
+        <th onclick="sortTbl('pending-table',0)">Address</th>
+        <th onclick="sortTbl('pending-table',1)">Area</th>
+        <th onclick="sortTbl('pending-table',2)">List Price</th>
+        <th onclick="sortTbl('pending-table',3)">Sq Ft</th>
+        <th onclick="sortTbl('pending-table',4)">$/SF</th>
+        <th onclick="sortTbl('pending-table',5)">Yr Built</th>
+        <th onclick="sortTbl('pending-table',6)">DOM</th>
+        <th onclick="sortTbl('pending-table',7)">List Date</th>
+        <th onclick="sortTbl('pending-table',8)">Pend Date</th>
+        <th>Status</th>
+        <th>Note</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- SOLD -->
+<div class="page" id="page-sold">
+  <div id="sold-metrics-row" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:0 0 16px;"></div>
+  <div class="panel">
+    <div class="panel-hd"><h3>Closed Sales</h3><span class="count" id="sold-panel-count">—</span></div>
+    <div class="scrollable" style="max-height:500px;">
+      <table class="tbl" id="sold-table">
+        <thead><tr>
+          <th onclick="sortTbl('sold-table',0)">Address</th>
+          <th onclick="sortTbl('sold-table',1)">Area</th>
+          <th onclick="sortTbl('sold-table',2)">List $</th>
+          <th onclick="sortTbl('sold-table',3)">Sold $</th>
+          <th onclick="sortTbl('sold-table',4)">S/L%</th>
+          <th onclick="sortTbl('sold-table',5)">Sq Ft</th>
+          <th onclick="sortTbl('sold-table',6)">$/SF Sold</th>
+          <th onclick="sortTbl('sold-table',7)">Yr Built</th>
+          <th onclick="sortTbl('sold-table',8)">DOM</th>
+          <th onclick="sortTbl('sold-table',9)">Sold Date</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+  <!-- S/L Ratio Distribution Chart -->
+  <div class="panel" style="margin-top:16px;">
+    <div class="panel-hd"><h3>Sale Price % of List — Distribution</h3><span class="count" id="sl-chart-count"></span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:8px 16px;">
+      <div>
+        <div style="font-size:11px;color:#94a3b8;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Ratio Buckets</div>
+        <div id="sl-ratio-chart" style="display:flex;flex-direction:column;gap:10px;"></div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#94a3b8;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Key Stats</div>
+        <div id="sl-ratio-stats" style="display:flex;flex-direction:column;gap:10px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- REDUCTIONS -->
+<div class="page" id="page-reductions">
+  <div style="margin-bottom:14px;" class="note-box" id="reductions-note">Upload CSV data to see price reductions.</div>
+  <div class="two-col">
+    <div class="panel">
+      <div class="panel-hd"><h3>Biggest Price Cuts</h3><span class="count">By % reduction</span></div>
+      <div class="scrollable" style="max-height:460px;">
+        <table class="tbl" id="reduction-table">
+          <thead><tr>
+            <th onclick="sortTbl('reduction-table',0)">Address</th>
+            <th onclick="sortTbl('reduction-table',1)">Area</th>
+            <th onclick="sortTbl('reduction-table',2)">Current $</th>
+            <th onclick="sortTbl('reduction-table',3)">Original $</th>
+            <th onclick="sortTbl('reduction-table',4)">Cut %</th>
+            <th onclick="sortTbl('reduction-table',5)">$ Saved</th>
+            <th onclick="sortTbl('reduction-table',6)">DOM</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hd"><h3>Cut Distribution</h3><span class="count">All reductions</span></div>
+      <div class="chart-wrap" id="cut-dist-chart"></div>
+    </div>
+  </div>
+</div>
+
+<!-- STALE / WATCH LIST -->
+<div class="page" id="page-stale">
+  <div class="note-box" style="margin-bottom:14px;">
+    <strong>Watch list:</strong> Active listings sitting longest. Long DOM with no reduction often means seller expectations haven't caught up to the market.
+  </div>
+  <div class="panel">
+    <div class="panel-hd"><h3>Longest Active Days on Market (DOM ≥ 60)</h3><span class="count" id="stale-count">—</span></div>
+    <div class="scrollable" style="max-height:520px;">
+      <table class="tbl" id="stale-table">
+        <thead><tr>
+          <th onclick="sortTbl('stale-table',0)">Address</th>
+          <th onclick="sortTbl('stale-table',1)">Area</th>
+          <th onclick="sortTbl('stale-table',2)">List Price</th>
+          <th onclick="sortTbl('stale-table',3)">Orig Price</th>
+          <th onclick="sortTbl('stale-table',4)">Cut%</th>
+          <th onclick="sortTbl('stale-table',5)">DOM</th>
+          <th onclick="sortTbl('stale-table',6)">CDOM</th>
+          <th onclick="sortTbl('stale-table',7)">Yr Built</th>
+          <th onclick="sortTbl('stale-table',8)">Sq Ft</th>
+          <th onclick="sortTbl('stale-table',9)">$/SF</th>
+          <th>List Date</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</div><!-- /content -->
+
+<footer>Market Activity Dashboard · All figures from MLS records · For professional use only</footer>
+
+<script>
+// ─── DATA ────────────────────────────────────────────────────────────────────
+const DATA = {
+  stats:{totalActive:0,totalPending:0,totalSold:0,totalContingent:0,totalExpired:0,
+         totalCancelled:0,totalReduced:0,soldOver:0,avgActivePrice:0,medActivePrice:0,
+         avgSoldPrice:0,medSoldPrice:0,avgDom:null,medDom:null,avgRatio:null,
+         avgActiveDom:null,totalListings:0},
+  allListings:[], recentSolds:[], newListings:[], staleListings:[],
+  histLabels:['<$400K','$400–500K','$500–600K','$600–700K','$700–800K','$800–900K','$900K–1M','$1–1.25M','$1.25–1.5M','$1.5–2M','$2M+'],
+  histActive:[0,0,0,0,0,0,0,0,0,0,0],
+  histPending:[0,0,0,0,0,0,0,0,0,0,0],
+  histSold:[0,0,0,0,0,0,0,0,0,0,0],
+};
+
+// ─── UTILITIES ───────────────────────────────────────────────────────────────
+function fmt(v) {
+  if (v == null) return '—';
+  if (v >= 1000000) return '$' + (v/1000000).toFixed(2) + 'M';
+  if (v >= 1000) return '$' + Math.round(v/1000) + 'K';
+  return '$' + v.toLocaleString();
+}
+function fmtK(n) { return n>=1000000?'$'+Math.round(n/100000)/10+'M':n>=1000?'$'+Math.round(n/1000)+'K':n?'$'+n:'—'; }
+
+function pillStatus(s) {
+  if (!s) return '';
+  const sl = s.toLowerCase();
+  if (sl === 'active') return `<span class="pill pill-active">Active</span>`;
+  if (sl.includes('pending inspection')) return `<span class="pill pill-purple">Insp.</span>`;
+  if (sl.includes('pending bu')) return `<span class="pill pill-teal">BU Req</span>`;
+  if (sl.includes('pending short')) return `<span class="pill pill-red">Short Sale</span>`;
+  if (sl.includes('pending')) return `<span class="pill pill-pending">Pending</span>`;
+  if (sl === 'sold') return `<span class="pill pill-sold">Sold</span>`;
+  if (sl === 'contingent') return `<span class="pill pill-teal">Contingent</span>`;
+  return `<span class="pill pill-gray">${s}</span>`;
+}
+
+// ─── PAGE SWITCHING ───────────────────────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ─── TABLE SORT ──────────────────────────────────────────────────────────────
+let sortState = {};
+function sortTbl(id, col) {
+  const tbl = document.getElementById(id);
+  const tbody = tbl.querySelector('tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const key = id + '_' + col;
+  const asc = sortState[key] !== true;
+  sortState[key] = asc;
+  tbl.querySelectorAll('th').forEach((th,i) => {
+    th.classList.remove('sorted-asc','sorted-desc');
+    if (i===col) th.classList.add(asc ? 'sorted-asc' : 'sorted-desc');
+  });
+  rows.sort((a,b) => {
+    let av = a.cells[col]?.getAttribute('data-val') ?? a.cells[col]?.textContent ?? '';
+    let bv = b.cells[col]?.getAttribute('data-val') ?? b.cells[col]?.textContent ?? '';
+    let an = parseFloat(av), bn = parseFloat(bv);
+    if (!isNaN(an) && !isNaN(bn)) return asc ? an-bn : bn-an;
+    return asc ? av.localeCompare(bv) : bv.localeCompare(av);
+  });
+  rows.forEach(r => tbody.appendChild(r));
+}
+
+// ─── PRICE HISTOGRAM ─────────────────────────────────────────────────────────
+function buildHistogram() {
+  const el = document.getElementById('price-hist');
+  el.innerHTML = '';
+  const max = Math.max(...DATA.histActive, ...DATA.histPending, ...DATA.histSold, 1);
+  const W = 220;
+  DATA.histLabels.forEach((label, i) => {
+    const a = DATA.histActive[i]||0, p = DATA.histPending[i]||0, s = DATA.histSold[i]||0;
+    const wa = Math.round(a/max*W), wp = Math.round(p/max*W), ws = Math.round(s/max*W);
+    el.innerHTML += `<div class="bar-row">
+      <div class="bar-label">${label}</div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:2px;">
+        <div style="display:flex;align-items:center;gap:4px;"><div style="width:${wa}px;height:8px;background:var(--blue);border-radius:2px;"></div><span style="font-size:10px;color:var(--gray-600)">${a}</span></div>
+        <div style="display:flex;align-items:center;gap:4px;"><div style="width:${wp}px;height:8px;background:var(--amber);border-radius:2px;"></div><span style="font-size:10px;color:var(--gray-600)">${p}</span></div>
+        <div style="display:flex;align-items:center;gap:4px;"><div style="width:${ws}px;height:8px;background:var(--green);border-radius:2px;"></div><span style="font-size:10px;color:var(--gray-600)">${s}</span></div>
+      </div></div>`;
+  });
+}
+
+// ─── DONUT CHART (LIVE DATA) ──────────────────────────────────────────────────
+function buildDonut() {
+  const svg = document.getElementById('donut-svg');
+  const legend = document.getElementById('donut-legend');
+  const s = DATA.stats;
+  const total = s.totalListings || 1;
+  const segments = [
+    { label:'Active',    val: s.totalActive,    color:'#2563eb' },
+    { label:'Pending',   val: s.totalPending,   color:'#d97706' },
+    { label:'Sold',      val: s.totalSold,      color:'#16a34a' },
+    { label:'Contingent',val: s.totalContingent||0, color:'#0891b2' },
+    { label:'Expired',   val: s.totalExpired||0,color:'#94a3b8' },
+    { label:'Cancelled', val: s.totalCancelled||0,color:'#f87171' },
+  ].filter(seg=>seg.val>0);
+  const cx=70, cy=70, r=55, ir=32;
+  let angle = -Math.PI/2;
+  let svgPaths = '';
+  legend.innerHTML = '';
+  segments.forEach(seg => {
+    const slice = (seg.val/total)*2*Math.PI;
+    const x1=cx+r*Math.cos(angle), y1=cy+r*Math.sin(angle);
+    angle += slice;
+    const x2=cx+r*Math.cos(angle), y2=cy+r*Math.sin(angle);
+    const ix1=cx+ir*Math.cos(angle-slice), iy1=cy+ir*Math.sin(angle-slice);
+    const ix2=cx+ir*Math.cos(angle), iy2=cy+ir*Math.sin(angle);
+    const lg = slice > Math.PI ? 1 : 0;
+    svgPaths += `<path d="M${x1},${y1} A${r},${r} 0 ${lg},1 ${x2},${y2} L${ix2},${iy2} A${ir},${ir} 0 ${lg},0 ${ix1},${iy1} Z" fill="${seg.color}" opacity=".9"/>`;
+    const pct = Math.round(seg.val/total*100);
+    legend.innerHTML += `<div class="legend-item"><div class="legend-dot" style="background:${seg.color}"></div><span>${seg.label}</span><span style="color:var(--gray-400);font-size:11px;margin-left:4px;">(${seg.val})</span><span class="legend-pct">${pct}%</span></div>`;
+  });
+  svg.innerHTML = svgPaths + `<text x="70" y="66" text-anchor="middle" font-size="18" font-weight="800" fill="#1e293b">${total}</text><text x="70" y="80" text-anchor="middle" font-size="9" fill="#94a3b8">TOTAL</text>`;
+  const dt = document.getElementById('donut-total');
+  if (dt) dt.textContent = total + ' total';
+}
+
+// ─── NEW LISTINGS TABLE ───────────────────────────────────────────────────────
+function buildNewListings() {
+  const tbody = document.querySelector('#new-table tbody');
+  tbody.innerHTML = '';
+  const data = DATA.newListings;
+  document.getElementById('new-count').textContent = data.length + ' listings';
+  data.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="addr">${r.address}</td><td>${r.area||'—'}</td>
+      <td class="price" data-val="${r.listPrice||0}">${fmt(r.listPrice)}</td>
+      <td class="num" data-val="${r.sqft||0}">${r.sqft?r.sqft.toLocaleString():'—'}</td>
+      <td class="num" data-val="${r.yr||0}">${r.yr||'—'}</td>
+      <td class="num" data-val="${r.ppsf||0}">${r.ppsf?'$'+r.ppsf:'—'}</td>
+      <td data-val="${r.dom||0}"><span class="pill pill-new">${r.dom??0}d</span></td>
+      <td class="num">${r.lot||'—'}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// ─── ACTIVE TABLE ─────────────────────────────────────────────────────────────
+let activeData = [];
+function buildActive() {
+  activeData = DATA.allListings.filter(r=>r.group==='Active');
+  renderActiveTable(activeData);
+}
+function renderActiveTable(data) {
+  const tbody = document.querySelector('#active-table tbody');
+  tbody.innerHTML = '';
+  data.forEach(r => {
+    const cutTag = r.reduced ? `<span class="pill pill-red">${r.pctChange}%</span>` : '<span class="pill pill-gray">—</span>';
+    const domTag = r.dom!=null?(r.dom<=7?`<span class="pill pill-new">${r.dom}d</span>`:r.dom>=90?`<span class="pill pill-stale">${r.dom}d</span>`:`${r.dom}d`):'—';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="addr">${r.address}</td><td>${r.area||'—'}</td>
+      <td class="price num" data-val="${r.listPrice||0}">${fmt(r.listPrice)}</td>
+      <td class="num" data-val="${r.origPrice||0}">${r.origPrice&&r.origPrice!==r.listPrice?fmt(r.origPrice):'—'}</td>
+      <td data-val="${r.pctChange||0}">${cutTag}</td>
+      <td class="num" data-val="${r.sqft||0}">${r.sqft?r.sqft.toLocaleString():'—'}</td>
+      <td class="num" data-val="${r.ppsf||0}">${r.ppsf?'$'+r.ppsf:'—'}</td>
+      <td class="num" data-val="${r.yr||0}">${r.yr||'—'}</td>
+      <td data-val="${r.dom||0}">${domTag}</td>
+      <td class="num">${r.lot||'—'}</td>
+      <td>${pillStatus(r.status)}</td>`;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('active-filter-count').textContent = data.length + ' listings';
+}
+function filterActive() {
+  const search = document.getElementById('active-search').value.toLowerCase();
+  const price  = document.getElementById('active-price').value;
+  const reduced= document.getElementById('active-reduced').value;
+  const domFilter = document.getElementById('active-dom').value;
+  let filtered = activeData.filter(r => {
+    if (search && !r.address.toLowerCase().includes(search) && !String(r.listPrice).includes(search)) return false;
+    if (price) { const [lo,hi]=price.split('-').map(Number); if (!r.listPrice||r.listPrice<lo||r.listPrice>=hi) return false; }
+    if (reduced==='yes' && !r.reduced) return false;
+    if (reduced==='no' && r.reduced) return false;
+    if (domFilter) { const d=r.dom??0; if (domFilter==='fresh'&&d>7) return false; if (domFilter==='mid'&&(d<8||d>30)) return false; if (domFilter==='aged'&&(d<31||d>90)) return false; if (domFilter==='stale'&&d<90) return false; }
+    return true;
+  });
+  renderActiveTable(filtered);
+}
+
+// ─── PENDING TABLE ────────────────────────────────────────────────────────────
+function buildPending() {
+  const pendRows = DATA.allListings.filter(r=>r.status&&r.status.toLowerCase().startsWith('pending'));
+  renderPendingTable(pendRows);
+}
+function renderPendingTable(data) {
+  const tbody = document.querySelector('#pending-table tbody');
+  tbody.innerHTML = '';
+  data.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="addr">${r.address}</td><td>${r.area||'—'}</td>
+      <td class="price num" data-val="${r.listPrice||0}">${fmt(r.listPrice)}</td>
+      <td class="num" data-val="${r.sqft||0}">${r.sqft?r.sqft.toLocaleString():'—'}</td>
+      <td class="num" data-val="${r.ppsf||0}">${r.ppsf?'$'+r.ppsf:'—'}</td>
+      <td class="num" data-val="${r.yr||0}">${r.yr||'—'}</td>
+      <td data-val="${r.dom||0}">${r.dom!=null?r.dom+'d':'—'}</td>
+      <td>${r.listDate||'—'}</td><td>${r.pendDate||'—'}</td>
+      <td>${pillStatus(r.status)}</td>
+      <td style="font-size:11px;color:var(--gray-400);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.bbcNote||''}</td>`;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('pending-filter-count').textContent = data.length + ' listings';
+}
+function filterPending() {
+  const search = document.getElementById('pending-search').value.toLowerCase();
+  const type   = document.getElementById('pending-type').value;
+  const price  = document.getElementById('pending-price').value;
+  let src = DATA.allListings.filter(r=>r.status&&r.status.toLowerCase().startsWith('pending'));
+  let filtered = src.filter(r => {
+    if (search && !r.address.toLowerCase().includes(search)) return false;
+    if (type && r.status !== type) return false;
+    if (price) { const [lo,hi]=price.split('-').map(Number); if (!r.listPrice||r.listPrice<lo||r.listPrice>=hi) return false; }
+    return true;
+  });
+  renderPendingTable(filtered);
+}
+
+// ─── SOLD TABLE ───────────────────────────────────────────────────────────────
+function buildSold() {
+  const tbody = document.querySelector('#sold-table tbody');
+  tbody.innerHTML = '';
+  const solds = DATA.recentSolds;
+  const ratios = solds.filter(r=>r.ratio);
+  const avgRatio = ratios.length ? Math.round(ratios.reduce((a,r)=>a+r.ratio,0)/ratios.length*10)/10 : null;
+  const overAsk  = solds.filter(r=>r.ratio&&r.ratio>100).length;
+  const domArr   = solds.filter(r=>r.dom!=null);
+  const avgDomV  = domArr.length ? Math.round(domArr.reduce((a,r)=>a+r.dom,0)/domArr.length*10)/10 : null;
+  const avgSP    = solds.length ? Math.round(solds.reduce((a,r)=>a+(r.sellPrice||0),0)/solds.length) : 0;
+  const smRow = document.getElementById('sold-metrics-row');
+  if (smRow) smRow.innerHTML = `
+    <div class="metric-card"><div class="metric-title">Avg Sold Price</div>
+      <div class="metric-big">${fmtK(avgSP)}</div><div class="metric-note">${solds.length} closings</div></div>
+    <div class="metric-card"><div class="metric-title">Avg Sale-to-List</div>
+      <div class="metric-big" style="color:${avgRatio>=100?'var(--green)':avgRatio&&avgRatio<97?'var(--red)':'var(--amber)'}">${avgRatio?avgRatio+'%':'—'}</div>
+      <div class="metric-note">${overAsk} sold above asking (${solds.length?Math.round(overAsk/solds.length*100):0}%)</div></div>
+    <div class="metric-card"><div class="metric-title">Avg Days to Close</div>
+      <div class="metric-big" style="color:var(--amber)">${avgDomV??'—'}</div><div class="metric-note">From list to sold date</div></div>`;
+  const spCount = document.getElementById('sold-panel-count');
+  if (spCount) spCount.textContent = solds.length + ' records';
+
+  solds.forEach(r => {
+    const ratio = r.ratio;
+    let ratioTag = '—';
+    if (ratio) {
+      const cls = ratio>100?'over':ratio<97?'under':'at';
+      const label = ratio>100?`+${(ratio-100).toFixed(1)}% over`:`${ratio.toFixed(1)}%`;
+      ratioTag = `<span class="ratio-bar ${cls}" style="width:${Math.min(ratio-90,20)*5}px;"></span>${label}`;
+    }
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="addr">${r.address}</td><td>${r.area||'—'}</td>
+      <td class="price num" data-val="${r.listPrice||0}">${fmt(r.listPrice)}</td>
+      <td class="price num" data-val="${r.sellPrice||0}" style="color:${r.ratio>100?'var(--green)':r.ratio<97?'var(--red)':'inherit'}">${fmt(r.sellPrice)}</td>
+      <td data-val="${r.ratio||0}">${ratioTag}</td>
+      <td class="num" data-val="${r.sqft||0}">${r.sqft?r.sqft.toLocaleString():'—'}</td>
+      <td class="num" data-val="${r.sellPpsf||0}">${r.sellPpsf?'$'+r.sellPpsf:'—'}</td>
+      <td class="num" data-val="${r.yr||0}">${r.yr||'—'}</td>
+      <td data-val="${r.dom||0}">${r.dom!=null?r.dom+'d':'—'}</td>
+      <td>${r.sellDate||'—'}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  // S/L Ratio chart
+  const slBuckets = [
+    {label:'<90%',    lo:0,   hi:90,  color:'#991b1b'},
+    {label:'90–95%',  lo:90,  hi:95,  color:'#dc2626'},
+    {label:'95–97%',  lo:95,  hi:97,  color:'#d97706'},
+    {label:'97–100%', lo:97,  hi:100, color:'#059669'},
+    {label:'100–103%',lo:100, hi:103, color:'#16a34a'},
+    {label:'103%+',   lo:103, hi:999, color:'#7c3aed'},
+  ];
+  const slChart   = document.getElementById('sl-ratio-chart');
+  const slStats   = document.getElementById('sl-ratio-stats');
+  const slCountEl = document.getElementById('sl-chart-count');
+  if (slChart && ratios.length) {
+    const counts = slBuckets.map(b=>ratios.filter(r=>r.ratio>=b.lo&&r.ratio<b.hi).length);
+    const maxC = Math.max(...counts, 1);
+    slChart.innerHTML = slBuckets.map((b,i)=>`
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="width:72px;font-size:11px;color:#475569;text-align:right;flex-shrink:0;">${b.label}</div>
+        <div style="width:${Math.round(counts[i]/maxC*180)}px;height:20px;background:${b.color};border-radius:4px;opacity:.85;min-width:${counts[i]>0?4:0}px;"></div>
+        <span style="font-size:12px;font-weight:700;color:#475569">${counts[i]}</span>
+      </div>`).join('');
+    if (slCountEl) slCountEl.textContent = ratios.length + ' w/ ratio data';
+    if (slStats) {
+      const sorted = ratios.map(r=>r.ratio).sort((a,b)=>a-b);
+      const medRatio = sorted[Math.floor(sorted.length/2)];
+      const pctOver  = Math.round(ratios.filter(r=>r.ratio>=100).length/ratios.length*100);
+      slStats.innerHTML = `
+        <div style="background:#f0fdf4;border-radius:8px;padding:12px 14px;">
+          <div style="font-size:22px;font-weight:800;color:#16a34a">${avgRatio}%</div>
+          <div style="font-size:12px;color:#94a3b8;margin-top:2px;">Avg Sale-to-List Ratio</div></div>
+        <div style="background:#f8f7ff;border-radius:8px;padding:12px 14px;">
+          <div style="font-size:22px;font-weight:800;color:#7c3aed">${medRatio?medRatio.toFixed(1)+'%':'—'}</div>
+          <div style="font-size:12px;color:#94a3b8;margin-top:2px;">Median Ratio</div></div>
+        <div style="background:${pctOver>=50?'#f0fdf4':'#fff7ed'};border-radius:8px;padding:12px 14px;">
+          <div style="font-size:22px;font-weight:800;color:${pctOver>=50?'#16a34a':'#d97706'}">${pctOver}%</div>
+          <div style="font-size:12px;color:#94a3b8;margin-top:2px;">At or above asking price</div></div>`;
+    }
+  } else if (slChart) {
+    slChart.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px 0;">No sold data with ratio available.</div>';
+  }
+}
+
+// ─── REDUCTION TABLE ──────────────────────────────────────────────────────────
+function buildReductions() {
+  const tbody = document.querySelector('#reduction-table tbody');
+  tbody.innerHTML = '';
+  const reds = DATA.allListings.filter(r=>r.group==='Active'&&r.reduced&&r.pctChange).sort((a,b)=>a.pctChange-b.pctChange);
+  const note = document.getElementById('reductions-note');
+  if (note && reds.length) note.innerHTML = `<strong>${reds.length} active listings</strong> show a price reduction — ${DATA.stats.totalActive?Math.round(reds.length/DATA.stats.totalActive*100):0}% of active inventory. Sellers are adjusting to buyer resistance.`;
+  reds.forEach(r => {
+    const ds = r.origPrice&&r.listPrice ? r.origPrice-r.listPrice : null;
+    const pctAbs = Math.abs(r.pctChange||0);
+    const color = pctAbs>=15?'#991b1b':pctAbs>=10?'#b45309':pctAbs>=5?'#92400e':'#5b21b6';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="addr">${r.address}</td><td>${r.area||'—'}</td>
+      <td class="price num" data-val="${r.listPrice||0}">${fmt(r.listPrice)}</td>
+      <td class="num" data-val="${r.origPrice||0}" style="text-decoration:line-through;color:var(--gray-400)">${fmt(r.origPrice)}</td>
+      <td data-val="${r.pctChange||0}"><span style="background:${color};color:white;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:800;">${r.pctChange}%</span></td>
+      <td class="num" data-val="${ds||0}" style="color:var(--red);font-weight:700;">${ds?'-'+fmt(ds):'—'}</td>
+      <td data-val="${r.dom||0}">${r.dom!=null?r.dom+'d':'—'}</td>`;
+    tbody.appendChild(tr);
+  });
+  const buckets2 = [['0–2%',0,2],['2–5%',2,5],['5–10%',5,10],['10–15%',10,15],['15%+',15,100]];
+  const counts = buckets2.map(([l,lo,hi])=>[l, reds.filter(r=>Math.abs(r.pctChange||0)>=lo&&Math.abs(r.pctChange||0)<hi).length]);
+  const maxC = Math.max(...counts.map(c=>c[1]), 1);
+  const chartEl = document.getElementById('cut-dist-chart');
+  const colors2 = ['#7c3aed','#d97706','#b45309','#dc2626','#7f1d1d'];
+  let html = '<div class="bar-chart">';
+  counts.forEach(([label,cnt],i) => {
+    const w = Math.round(cnt/maxC*180);
+    html += `<div class="bar-row"><div class="bar-label">${label}</div><div style="flex:1;display:flex;align-items:center;gap:8px;"><div style="width:${w}px;height:20px;background:${colors2[i]};border-radius:4px;opacity:.85;"></div><span style="font-size:12px;font-weight:700;color:var(--gray-600)">${cnt}</span></div></div>`;
+  });
+  chartEl.innerHTML = html + '</div>';
+}
+
+// ─── STALE TABLE ─────────────────────────────────────────────────────────────
+function buildStale() {
+  const tbody = document.querySelector('#stale-table tbody');
+  tbody.innerHTML = '';
+  const staleData = DATA.allListings.filter(r=>r.group==='Active'&&r.dom&&r.dom>=60).sort((a,b)=>(b.dom||0)-(a.dom||0));
+  document.getElementById('stale-count').textContent = staleData.length + ' listings';
+  staleData.forEach(r => {
+    const pctTag = r.pctChange ? `<span style="color:var(--red);font-weight:700">${r.pctChange}%</span>` : '<span style="color:var(--gray-400)">None</span>';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="addr">${r.address}</td><td>${r.area||'—'}</td>
+      <td class="price num" data-val="${r.listPrice||0}">${fmt(r.listPrice)}</td>
+      <td class="num" data-val="${r.origPrice||0}">${r.origPrice&&r.origPrice!==r.listPrice?fmt(r.origPrice):'—'}</td>
+      <td data-val="${r.pctChange||0}">${pctTag}</td>
+      <td data-val="${r.dom||0}"><span class="pill pill-stale">${r.dom}d</span></td>
+      <td data-val="${r.cdom||0}">${r.cdom!=null?r.cdom+'d':'—'}</td>
+      <td class="num">${r.yr||'—'}</td>
+      <td class="num">${r.sqft?r.sqft.toLocaleString():'—'}</td>
+      <td class="num">${r.ppsf?'$'+r.ppsf:'—'}</td>
+      <td style="font-size:11px;color:var(--gray-400)">${r.listDate||'—'}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// ─── UPDATE OVERVIEW PANELS ───────────────────────────────────────────────────
+function updateOverview() {
+  const s = DATA.stats;
+  const sg = document.getElementById('overview-stat-grid');
+  if (sg) sg.innerHTML = `
+    <div class="stat-card blue"><div class="stat-val" style="color:var(--blue)">${s.totalActive}</div><div class="stat-label">Active Listings</div><div class="stat-sub">Avg ${fmtK(s.avgActivePrice)} · Med ${fmtK(s.medActivePrice)}</div></div>
+    <div class="stat-card amber"><div class="stat-val" style="color:var(--amber)">${s.totalPending}</div><div class="stat-label">Pending / In Contract</div><div class="stat-sub">Active + Contingent under contract</div></div>
+    <div class="stat-card green"><div class="stat-val" style="color:var(--green)">${s.totalSold}</div><div class="stat-label">Closed Sales</div><div class="stat-sub">Avg sell ${fmtK(s.avgSoldPrice)}</div></div>
+    <div class="stat-card teal"><div class="stat-val" style="color:var(--teal)">${s.totalContingent||0}</div><div class="stat-label">Contingent</div><div class="stat-sub">Under contract w/ contingency</div></div>
+    <div class="stat-card red"><div class="stat-val" style="color:var(--red)">${s.totalReduced}</div><div class="stat-label">Price Reductions</div><div class="stat-sub">${s.totalActive?Math.round(s.totalReduced/s.totalActive*100):0}% of active inventory</div></div>
+    <div class="stat-card gray"><div class="stat-val" style="color:#475569">${s.totalExpired||0}</div><div class="stat-label">Expired</div><div class="stat-sub">+ ${s.totalCancelled||0} Cancelled</div></div>`;
+  const mr = document.getElementById('overview-metrics-row');
+  const pctOver = s.totalSold ? Math.round((s.soldOver||0)/s.totalSold*100) : 0;
+  const absRatio = s.totalActive>0 ? s.totalPending/s.totalActive : 0;
+  const absSignal = absRatio>=1.5?'Strong Demand':absRatio>=0.8?'Balanced':'Buyer Advantage';
+  const absColor  = absSignal==='Strong Demand'?'#16a34a':absSignal==='Balanced'?'#d97706':'#dc2626';
+  if (mr) mr.innerHTML = `
+    <div class="metric-card"><div class="metric-title">Sale-to-List Ratio</div><div class="metric-big" style="color:${s.avgRatio>=100?'#16a34a':s.avgRatio&&s.avgRatio<97?'#dc2626':'#d97706'}">${s.avgRatio?s.avgRatio+'%':'—'}</div><div class="metric-note">Avg across ${s.totalSold} closed sales</div></div>
+    <div class="metric-card"><div class="metric-title">Sold Over Asking</div><div class="metric-big" style="color:#16a34a">${s.soldOver||0} <span style="font-size:14px;font-weight:500">/ ${s.totalSold}</span></div><div class="metric-note">${pctOver}% of closings above list price</div></div>
+    <div class="metric-card"><div class="metric-title">Avg DOM — Active</div><div class="metric-big" style="color:#d97706">${s.avgActiveDom!=null?s.avgActiveDom:'—'}</div><div class="metric-note">Days on market (active)</div></div>
+    <div class="metric-card"><div class="metric-title">Avg DOM — Sold</div><div class="metric-big" style="color:#16a34a">${s.avgDom!=null?s.avgDom:'—'}</div><div class="metric-note">Days listed before closing</div></div>
+    <div class="metric-card"><div class="metric-title">Avg Active Price</div><div class="metric-big">${fmtK(s.avgActivePrice)}</div><div class="metric-note">Median: ${fmtK(s.medActivePrice)}</div></div>
+    <div class="metric-card"><div class="metric-title">Absorption Signal</div><div class="metric-big" style="color:${absColor}">${absSignal}</div><div class="metric-note">${s.totalPending} under contract vs ${s.totalActive} active</div></div>`;
+}
+
+// ─── BOOT ────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  buildHistogram(); buildDonut(); buildNewListings();
+  buildActive(); buildPending(); buildSold();
+  buildReductions(); buildStale(); updateOverview();
+});
+
+// ─── CSV UPLOAD ──────────────────────────────────────────────────────────────
+function handleDragOver(e) { e.preventDefault(); document.getElementById('dropZone').classList.add('drag-over'); }
+function handleDragLeave(e) { document.getElementById('dropZone').classList.remove('drag-over'); }
+function handleDrop(e) {
+  e.preventDefault(); document.getElementById('dropZone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0]; if (file) processFile(file);
+}
+function onFileInput(inp) { if (inp.files[0]) processFile(inp.files[0]); }
+function setUploadStatus(msg, type) {
+  const el = document.getElementById('uploadStatus');
+  if (el) { el.textContent = msg; el.className = 'upload-status ' + (type||''); }
+}
+function processFile(file) {
+  if (file.name.split('.').pop().toLowerCase() !== 'csv') { setUploadStatus('Please upload a CSV file.','err'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const listings = parseCSV(e.target.result);
+      if (!listings||listings.length===0) { setUploadStatus('Could not parse file — no rows found.','err'); return; }
+      rebuildDashboard(listings, file.name);
+      setUploadStatus('✓ Loaded ' + listings.length + ' listings from ' + file.name, 'ok');
+    } catch(err) { setUploadStatus('Error: ' + err.message, 'err'); }
+  };
+  reader.readAsText(file);
+}
+
+function parseCSV(text) {
+  const lines = text.split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const headers = splitCSVRow(lines[0]).map(h=>h.trim().toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,''));
+  const isMLS = headers.includes('street_number');
+  const ci = {}; headers.forEach((h,i)=>{ ci[h]=i; });
+  let cells;
+  function gc(aliases) { for (const a of aliases) { const idx=ci[a]; if (idx!=null&&idx<99999) return (cells[idx]||'').trim(); } return ''; }
+  function gn(aliases) { const s=gc(aliases).replace(/[$,%\s]/g,''); const n=parseFloat(s); return isNaN(n)?null:n; }
+  const listings = [];
+  for (let i=1; i<lines.length; i++) {
+    const line = lines[i].trim(); if (!line) continue;
+    cells = splitCSVRow(line);
+    let address = '';
+    if (isMLS) {
+      const num=gc(['street_number']),mod=gc(['street_number_modifier']),dir=gc(['street_direction']);
+      const name=gc(['street_name']),suf=gc(['street_suffix']),post=gc(['street_post_direction']);
+      const unit=gc(['unit']),city=gc(['city']);
+      address = [num,mod,dir,name,suf,post,unit?'#'+unit:'',city].filter(Boolean).join(' ').replace(/\s+/g,' ').trim();
+    } else { address = gc(['address','street_address','property_address']); }
+    if (!address) continue;
+    const rawStatus = gc(['status','listing_status','group']);
+    const status = normalizeStatus(rawStatus||'Active');
+    const lp = gn(['listing_price','list_price','lp']);
+    const sp = gn(['selling_price','sell_price','sold_price','close_price','sp']);
+    const op = gn(['original_price','orig_price','original_list'])||lp;
+    const rawArea = gc(['area','neighborhood','district','zone','sub_area']);
+    const area = rawArea ? rawArea.replace(/^\d+\s*-\s*/,'').trim() : '';
+    const sqft    = gn(['square_footage','sqft','sq_ft','square_feet']);
+    const lotSqft = gn(['lot_square_footage','lot_sq_ft','lot_sqft','lot_size_sqft']);
+    const lot     = lotSqft ? Math.round(lotSqft/43560*100)/100 : gn(['lot','lot_ac','lot_acres']);
+    const yr      = gn(['year_built','yr_built','yr','year']);
+    const dom     = gn(['dom','days_on_market']);
+    const cdom    = gn(['cdom','cumulative_dom']);
+    const listDate= gc(['listing_date','list_date','date_listed']).replace(/\s+0:00$/,'');
+    const pendDate= gc(['pending_date','pend_date','date_pending']).replace(/\s+0:00$/,'');
+    const sellDate= gc(['selling_date','sell_date','sold_date','close_date']).replace(/\s+0:00$/,'');
+    const bbcNote = gc(['agent_only_comments','bbc_note','note','notes']);
+    const pctChange = (op&&lp&&op!==lp)?Math.round((lp-op)/op*1000)/10:0;
+    const reduced   = !!(pctChange&&pctChange<0);
+    const ratio     = (sp&&lp)?Math.round(sp/lp*1000)/10:null;
+    const ppsf      = (sqft&&lp)?Math.round(lp/sqft):null;
+    const sellPpsf  = (sqft&&sp)?Math.round(sp/sqft):null;
+    listings.push({ status, group:normalizeGroup(status), address, area,
+      listPrice:lp, sellPrice:sp, origPrice:op, yr, sqft, lot,
+      reduced, pctChange, ratio, ppsf, sellPpsf, dom, cdom, listDate, pendDate, sellDate, bbcNote });
+  }
+  return listings;
+}
+
+function splitCSVRow(line) {
+  const cells=[]; let cur='',inQ=false;
+  for (let i=0;i<line.length;i++) {
+    const ch=line[i];
+    if (ch==='"') { if (inQ&&line[i+1]==='"'){cur+='"';i++;}else inQ=!inQ; }
+    else if (ch===','&&!inQ){cells.push(cur);cur='';}
+    else cur+=ch;
+  }
+  cells.push(cur); return cells;
+}
+
+function normalizeStatus(s) {
+  const l=(s||'').toLowerCase().trim();
+  if (l==='a'||l==='active') return 'Active';
+  if (l.startsWith('pending')||l==='p') return 'Pending';
+  if (l.includes('contingent')||l.includes('ctg')) return 'Contingent';
+  if (l.includes('sold')||l.includes('closed')||l==='s') return 'Sold';
+  if (l.includes('expired')||l==='e') return 'Expired';
+  if (l.includes('cancel')) return 'Cancelled';
+  if (l.includes('temp')||l.includes('off mrkt')||l.includes('withdrawn')) return 'Withdrawn';
+  if (l.includes('rent')) return 'Rented';
+  if (l.includes('sale fail')) return 'Cancelled';
+  return s||'Active';
+}
+function normalizeGroup(s) { return (s==='Active'||s==='Contingent')?'Active':s; }
+
+function rebuildDashboard(listings, filename) {
+  const active  = listings.filter(r=>r.group==='Active');
+  const pending = listings.filter(r=>r.status==='Pending'||r.status==='Contingent');
+  const sold    = listings.filter(r=>r.status==='Sold');
+  const avg = arr => arr.length?arr.reduce((a,b)=>a+b,0)/arr.length:0;
+  const med = arr => { if (!arr.length) return 0; const s=[...arr].sort((a,b)=>a-b); const m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; };
+  DATA.allListings  = listings;
+  DATA.recentSolds  = sold.sort((a,b)=>(b.sellDate||'').localeCompare(a.sellDate||'')).slice(0,60);
+  DATA.newListings  = active.filter(r=>r.dom!=null&&r.dom<=7).sort((a,b)=>(a.dom||0)-(b.dom||0));
+  DATA.staleListings= active.filter(r=>r.dom!=null&&r.dom>=60).sort((a,b)=>(b.dom||0)-(a.dom||0));
+  const activePrices= active.map(r=>r.listPrice).filter(Boolean);
+  const soldPrices  = sold.map(r=>r.sellPrice||r.listPrice).filter(Boolean);
+  const soldDoms    = sold.map(r=>r.dom).filter(v=>v!=null);
+  DATA.stats = {
+    totalActive:active.length, totalPending:pending.length, totalSold:sold.length,
+    totalContingent:listings.filter(r=>r.status==='Contingent').length,
+    totalExpired:listings.filter(r=>r.status==='Expired').length,
+    totalCancelled:listings.filter(r=>r.status==='Cancelled').length,
+    totalReduced:active.filter(r=>r.reduced).length,
+    soldOver:sold.filter(r=>r.ratio&&r.ratio>100).length,
+    avgActivePrice:Math.round(avg(activePrices)), medActivePrice:Math.round(med(activePrices)),
+    avgSoldPrice:Math.round(avg(soldPrices)),     medSoldPrice:Math.round(med(soldPrices)),
+    avgDom:Math.round(avg(soldDoms)),             medDom:Math.round(med(soldDoms)),
+    avgRatio:sold.filter(r=>r.ratio).length?Math.round(avg(sold.filter(r=>r.ratio).map(r=>r.ratio))*10)/10:null,
+    avgActiveDom:Math.round(avg(active.map(r=>r.dom).filter(v=>v!=null))*10)/10||null,
+    totalListings:listings.length,
+  };
+  const buckets=[[0,400],[400,500],[500,600],[600,700],[700,800],[800,900],[900,1000],[1000,1250],[1250,1500],[1500,2000],[2000,9999]];
+  DATA.histLabels  = buckets.map(([l,h])=>h>=2000?'$2M+':l===0?'<$400K':'$'+l+'–'+h+'K');
+  DATA.histActive  = buckets.map(([l,h])=>active.filter(r=>r.listPrice&&r.listPrice>=l*1000&&r.listPrice<h*1000).length);
+  DATA.histPending = buckets.map(([l,h])=>pending.filter(r=>r.listPrice&&r.listPrice>=l*1000&&r.listPrice<h*1000).length);
+  DATA.histSold    = buckets.map(([l,h])=>sold.filter(r=>{const p=r.sellPrice||r.listPrice;return p&&p>=l*1000&&p<h*1000;}).length);
+  const metaEl = document.getElementById('hdr-meta');
+  if (metaEl) metaEl.innerHTML = 'Loaded: '+filename.replace('.csv','')+'<br>'+listings.length+' records';
+  const tabs = document.querySelectorAll('.tab');
+  const tabCounts = [null,DATA.stats.totalActive,DATA.stats.totalPending,DATA.stats.totalSold,DATA.stats.totalReduced,null];
+  tabs.forEach((t,i) => { if (tabCounts[i]!=null) t.textContent = t.textContent.replace(/\s*\(\d+\)/,'')+' ('+tabCounts[i]+')'; });
+  buildHistogram(); buildDonut(); buildNewListings();
+  buildActive(); buildPending(); buildSold();
+  buildReductions(); buildStale(); updateOverview();
+}
+</script>
+
+<div class="upload-section">
+  <div class="upload-zone" id="dropZone"
+    onclick="document.querySelector('#dropZone input[type=file]').click()"
+    ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+    <span class="upload-icon">&#128196;</span>
+    <div class="upload-title">Load New Data</div>
+    <div class="upload-sub">Drag &amp; drop a <strong>CSV</strong> file here, or click to browse</div>
+    <input type="file" accept=".csv" style="display:none" onchange="onFileInput(this)">
+    <div class="upload-status" id="uploadStatus"></div>
+  </div>
+</div>
+</body>
+</html>
